@@ -131,6 +131,7 @@ Town Center Four\\
 
 TBD
 
+
 \cite{cloudmesh-ee}
 \cite{cloudmesh-gpu}
 \cite{cloudmesh-stopwatch}
@@ -143,7 +144,62 @@ TBD
 \cite{www-rivanna}
 \cite{www-slurm}
 
+\section{Related Work}
 
+%Cloud masking should be related work
+
+Cloud masking is a crucial task that is well-motivated for meteorology and applications in environmental sciences. Given satellite images, cloud masks are generated such that each pixel is labeled to either have cloud or not. To produce these cloud masks, the traditional approaches have been: thresholding \cite{Saunders1986AnAS,Saunders1988AnIM} and Bayesian\cite{Merchant2005ProbabilisticPB} methods. Thresholding methods consist of several threshold tests where spectral and spatial properties of the images are compared with ranges that are believed to be indicative of a {\em clear-sky} pixel. And those other pixels that are not labeled as {\em clear-sky} are flagged as {\em cloudy} pixel. This method was widely used from the late 1980s to the early 2000s \cite{Merchant2005ProbabilisticPB}. The gradual transition away from threshold tests was due to its long-criticized limitations: firstly, threshold settings rely on domain expertise about indicators of cloudiness that may not be objective, which also makes later modification and updates difficult; secondly, thresholds provide users no flexibility in the trade-off between SST coverage and SST bias; third, threshold tests do not make use of all available prior information. These shortcomings of thresholding methods are improved by later developed Bayesian methods \cite{Merchant2005ProbabilisticPB}.
+
+
+Bayesian methods deduce the probability of a clear sky over each pixel by applying Bayes' theorem. As a result, these Bayesian approaches are fully probabilistic and deduce pixels based on prior information and observations in images. Compared to threshold tests, Bayesian methods achieve a better accuracy in predicting pixels' cloudiness, offering generality and conceptual clarity in its approach, and enhancing maintainability and adaptability largely \cite{Merchant2005ProbabilisticPB}. 
+
+More recently, the rise of deep learning has led to the use of CNNs for generating these cloud masks. CNNs have achieved superior performance due to their ability of automatic feature extraction. \cite{WIELAND2019111203} have shown the use U-Net to generate cloud masks and have achieved higher results compared to the state-of-the-art rule-based approach Fmask  \cite{Zhu2012ObjectbasedCA}. \cite{JEPPESEN2019247} introduced Remote Sensing Network (RS-Net), an architecture based on U-Net for cloud masking, and also have shown to achieve higher performance compared to Fmask \cite{Zhu2012ObjectbasedCA}.
+
+KappaMask \cite{Domnich2021KappaMaskAC} was another U-Net based CNN model that outperformed the rule-based Fmask algorithm. MSCFF \cite{Li2019DeepLB} is a CNN model that uses an encoder-decoder model to extract high-level features. MCSFF also outperforms Fmask on several satellite datasets. All these models have reported their performances on several satellite images such as Sentinel-2, Landsat, etc., and also make use of human-annotated (some assisted by software) ground truth values. On the contrary, the cloud-masking benchmark makes use of Sentinel-3's images and uses Bayesian masks as the ground truth. To our best knowledge, there is no previous work done using Sentinel-3 images except the reference implementation provided by MLCommons Science Working Group that achieves 92\% classification accuracy on the test set.
+
+
+%In this section, we provide a short overview of related work in regard to the observation data gathering. The data is gathered with different instruments/satellites  The list of datasets is shown in Table \ref{tab:datasets}. Our data set is from \TODO{where is our data from} and indiated ath the ??th row in the table.
+
+
+\section{Dataset} 
+
+As mentioned in the previous Section, the cloud-masking benchmark provides 180GB worth of Sentinel-3 satellite images for this task. The dataset consists of a total of 1070 images, both captured at day and night. The dataset comes with the train-test split where 90\% is used for training, and 10\% is used for testing. 
+The images are of the dimension 1200 x 1500 with fifteen different channels. Three channels are used to represent brightness, six channels are used to represent reflectance, and six channels are used to represent radiance. However, for the benchmark, as provided in the reference implementation, only a total of nine channels, i.e., six channels of reflectance and three channels of brightness are used. 
+
+\begin{figure*}[t]
+\centering\includegraphics[width=0.75\paperwidth]{images/visual-for-dataloading.png}
+\caption{The Preprocessing of Training/Testing Data}
+\label{fig:preprocessing}
+\end{figure*}
+
+\textbf{Preprocessing and postprocessing:} According to the reference implementation, while training the U-Net model, the input images and their ground truths are first cropped and then divided into smaller sized $256 \times 256$ patches, keeping all the nine channels intact. After creating these patches of individual images, we get a total of $19,400$ images for training. Hereafter, we refer to patches as images. These images are further split into training and validation set using the $80/20$ split ratio, and then sent for training after shuffling. 
+For the test set, the images are neither cropped nor shuffled. Overlapping smaller images(patches) of $256 \times 256$ are created both for the input image but not for the ground truth, and we get a total of $6300$ images. After getting the predictions from the model, these  $256 \times 256$ images are reconstructed to the original size and then evaluated with the ground truth. This entire preprocessing step is shown in Figure \ref{fig:preprocessing}
+
+During training, the model takes an image of size $256 \times 256$, and generates a cloud mask of the same size. Once the cloud masks have been generated by the model during training, the accuracy is reported as the number of pixels that are correctly classified as cloud or not. 
+
+During inference, the model first generates a cloud mask for each $256 \times 256$ image of testing data, where the input image goes through the same preprocessing step as described above for training. For each pixel in the image, the model outputs a probability of that pixel having clear-sky. Pixels that have a probability larger than 0.5 are labeled as clear-sky and the others cloudy. Then, those images are then reconstructed back to full size masks of dimension 1200*1500. 
+
+
+
+\begin{table*}[t]
+    \centering
+    \caption{This table presents the several methods used for cloud masking with their respective dataset, ground truth, and performance.}
+    \label{tab:datasets}
+    \resizebox{1.8\columnwidth}{!}{
+    \begin{tabular}{|l|c|l|l|l|l|}
+    \hline
+        {\bf} & {\bf Reference} & {\bf Dataset} & {\bf Ground-truth} & {\bf Model}  & {\bf Accuracy} \\ \hline
+        1 & \cite{Merchant2005ProbabilisticPB} & ATSR-2 & Human annotation & Bayesian screening & 0.917\\ \hline
+        2 & \cite{WIELAND2019111203} & Sentinel-2 & Software-assisted human annotation (QGIS) & U-Net & 0.90 \\ \hline
+        3 & \cite{WIELAND2019111203} & Landsat TM & Software-assisted human annotation (QGIS) & U-Net & 0.89 \\ \hline
+        4 & \cite{WIELAND2019111203} & Landsat ETM+ & Software-assisted human annotation (QGIS) & U-Net & 0.89 \\ \hline
+        5 & \cite{WIELAND2019111203} & Landsat OLI & Software-assisted human annotation (QGIS) & U-Net & 0.91 \\ \hline
+        6 & \cite{8401847} & GaoFen-1 & Human annotation & MFFSNet & 0.98, mIOU = 0.87 \\ \hline
+        7 & \cite{Domnich2021KappaMaskAC} & Sentinel 2 & Software-assisted human annotation (CVAT) & KappaMask & 0.91 \\ \hline
+        8 & \cite{JEPPESEN2019247} & Landsat 8 Biome and SPARCS & Human annotation & RS-Net & 0.956 \\ \hline
+    \end{tabular}}
+
+\end{table*}
 
 
 \subsection{Hardware used for this Research}
@@ -157,6 +213,8 @@ The benchmarks we present in the next sections have been run on a number of comp
 \item {\bf Laptop} -- A store-bought laptop with an AMD 5900HX processor, 16GB memory, and NVMe storage.
 
 \end{itemize}
+
+
 
 
 The details of the machines are showcased in Table~\ref{tab:hwoverview}.
@@ -208,23 +266,26 @@ The details of the machines are showcased in Table~\ref{tab:hwoverview}.
     \end{center}
 \end{table*}
 
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=\linewidth]{sample-franklin}
-  \caption{1907 Franklin Model D roadster. Photograph by Harris \&
-    Ewing, Inc. [Public domain], via Wikimedia
-    Commons. (\url{https://goo.gl/VLCRBB}).}
-  \Description{A woman and a girl in white dresses sit in an open car.}
-\end{figure}
+%\begin{figure}[h]
+% \centering
+%  \includegraphics[width=\linewidth]{sample-franklin}
+%  \caption{1907 Franklin Model D roadster. Photograph by Harris \&
+%    Ewing, Inc. [Public domain], via Wikimedia
+%    Commons. (\url{https://goo.gl/VLCRBB}).}
+%  \Description{A woman and a girl in white dresses sit in an open car.}
+%\end{figure}
 
-  \cite{Harel79}, a divisible-book such as an anthology or compilation
+
+
+
+
 
 \section{Acknowledgments}
 
 TBD
 
 \bibliographystyle{ACM-Reference-Format}
-\bibliography{sample-base}
+\bibliography{vonLaszewski-cloudmask-new}
 
 %%
 %% If your work has an appendix, this is the place to put it.
